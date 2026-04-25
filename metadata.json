@@ -1,0 +1,6 @@
+{
+  "name": "Study Time Table Planner",
+  "description": "A modern, student-friendly mobile app to plan study schedules, track progress, and get smart reminders.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["Firebase Auth", "Firestore", "Data Visualization", "PDF Export"]
+}

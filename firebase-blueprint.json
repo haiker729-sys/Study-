@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores student profile information and progress metrics.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "streak": { "type": "integer" },
+        "lastActive": { "type": "string", "format": "date" },
+        "points": { "type": "integer" },
+        "badges": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email"]
+    },
+    "StudyTask": {
+      "title": "Study Task",
+      "description": "A specific study session or task in the timetable.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "taskName": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "skipped"] },
+        "color": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "date": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "startTime", "endTime"]
+    },
+    "TimetableTemplate": {
+      "title": "Timetable Template",
+      "description": "A reusable set of tasks for different modes (e.g. Exam Mode).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "tasks": { "type": "array", "items": { "$ref": "#/entities/StudyTask" } }
+      },
+      "required": ["userId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User account and gamification data."
+    },
+    "/tasks/{taskId}": {
+      "schema": "StudyTask",
+      "description": "Daily study tasks."
+    },
+    "/templates/{templateId}": {
+      "schema": "TimetableTemplate",
+      "description": "Saved timetable configurations."
+    }
+  }
+}

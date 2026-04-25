@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Entity Validations
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 255
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.streak is int && data.streak >= 0
+        && data.points is int && data.points >= 0
+        && data.badges is list && data.badges.size() <= 50;
+    }
+
+    function isValidTask(data) {
+      return data.userId == request.auth.uid 
+        && data.subject is string && data.subject.size() <= 100
+        && data.taskName is string && data.taskName.size() <= 200
+        && data.startTime is string && data.startTime.size() == 5 // HH:mm
+        && data.endTime is string && data.endTime.size() == 5
+        && data.status in ['pending', 'completed', 'skipped']
+        && data.priority in ['low', 'medium', 'high']
+        && data.color is string && data.color.size() <= 7;
+    }
+
+    // User Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().points == 0 && incoming().streak == 0;
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        // Allow updating lastActive and streak
+        incoming().diff(existing()).affectedKeys().hasOnly(['lastActive', 'streak', 'points', 'badges', 'displayName', 'photoURL'])
+      );
+    }
+
+    // Task Rules
+    match /tasks/{taskId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidTask(incoming()) && isValidId(taskId);
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidTask(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'subject', 'taskName', 'startTime', 'endTime', 'color', 'priority', 'date'])
+      );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // Template Rules
+    match /templates/{templateId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidId(templateId);
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
